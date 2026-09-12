@@ -1,0 +1,47 @@
+name: README build
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 4 * * *"   # every day at 04:00 UTC (09:30 IST)
+  workflow_dispatch:      # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write         # needed so the workflow can commit the updated SVGs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Update SVG stats
+        env:
+          # Built-in token: no setup needed, reads public repos only.
+          # To count private repos too, create a classic PAT (scopes: repo, read:user)
+          # and store it as a repo secret named ACCESS_TOKEN, then use secrets.ACCESS_TOKEN here.
+          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USER_NAME: vishalsharmabaddi
+        run: python update_stats.py
+
+      - name: Commit
+        run: |-
+          git add .
+          git diff
+          git config --global user.email "github-actions-bot@users.noreply.github.com"
+          git config --global user.name "github-actions-bot"
+          git commit -m "Update README stats" -a || echo "No changes to commit"
+          git push
